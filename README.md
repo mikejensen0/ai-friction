@@ -1,6 +1,6 @@
-# ai-friction README
+# code-tutor README
 
-This is the README for your extension "ai-friction". After writing up a brief description, we recommend including the following sections.
+This is the README for your extension "code-tutor". After writing up a brief description, we recommend including the following sections.
 
 ## Features
 

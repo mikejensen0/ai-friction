@@ -1,7 +1,7 @@
 {
-  "name": "ai-friction",
-  "displayName": "ai_friction",
-  "description": "AI chatbot wrapper with friction",
+  "name": "code-tutor",
+  "displayName": "Code Tutor",
+  "description": "",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.96.0"
@@ -12,11 +12,14 @@
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
-    "commands": [
-      {
-        "command": "ai-friction.helloWorld",
-        "title": "Hello World"
-      }
+   "chatParticipants": [
+    {
+        "id": "chat-tutorial.code-tutor",
+        "fullName": "Code Tutor",
+        "name": "tutor",
+        "description": "What can I teach you?",
+        "isSticky": true
+    }
     ]
   },
   "scripts": {
