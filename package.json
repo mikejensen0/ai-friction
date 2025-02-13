@@ -9,7 +9,7 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": ["onStartupFinished"],
   "main": "./out/extension.js",
   "contributes": {
    "chatParticipants": [
@@ -18,9 +18,30 @@
         "fullName": "Code Tutor",
         "name": "tutor",
         "description": "What can I teach you?",
-        "isSticky": true
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "frictionless",
+            "description": "remove friction"
+          }
+        ]
     }
-    ]
+    ],
+    "commands": [
+      {
+        "command": "code-tutor.removeSuggestions",
+        "title": "Toogle tutor annotations",
+        "icon": "$(comment)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "code-tutor.removeSuggestions",
+          "group": "navigation"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
