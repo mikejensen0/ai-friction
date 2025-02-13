@@ -9,7 +9,7 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": ["onStartupFinished"],
+  "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
    "chatParticipants": [
@@ -21,27 +21,12 @@
         "isSticky": true,
         "commands": [
           {
-            "name": "frictionless",
-            "description": "remove friction"
+            "name": "coolcommand",
+            "description": "stuff"
           }
         ]
     }
-    ],
-    "commands": [
-      {
-        "command": "code-tutor.removeSuggestions",
-        "title": "Toogle tutor annotations",
-        "icon": "$(comment)"
-      }
-    ],
-    "menus": {
-      "editor/title": [
-        {
-          "command": "code-tutor.removeSuggestions",
-          "group": "navigation"
-        }
-      ]
-    }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
