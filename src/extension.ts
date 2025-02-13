@@ -2,44 +2,21 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 
+const pastedTextDecorationType = vscode.window.createTextEditorDecorationType({
+    backgroundColor: 'rgba(0, 255, 0, 0.3)' // Light green background
+});
 const annotatedLines = new Set<number>();
 const decorationTypes = new Map<number, vscode.TextEditorDecorationType>();
 export function activate(context: vscode.ExtensionContext) {
 
-
-	const ANNOTATION_PROMPT = `You are a code tutor who helps students learn how to write better code. Your job is to evaluate a block of code that the user gives you and then annotate any lines that could be improved with a brief suggestion and the reason why you are making that suggestion. Only make suggestions when you feel the severity is enough that it will impact the readability and maintainability of the code. Be friendly with your suggestions and remember that these are students so they need gentle guidance. Format each suggestion as a single JSON object. It is not necessary to wrap your response in triple backticks. Here is an example of what your response should look like:
-
-{ "line": 1, "suggestion": "I think you should use a for loop instead of a while loop. A for loop is more concise and easier to read." }{ "line": 12, "suggestion": "I think you should use a for loop instead of a while loop. A for loop is more concise and easier to read." }
-`;
-	const BASE_PROMPT = 'You are a coding assistants. Your job is to provide multiple examples of coding solutions to the user. Respond with multiple potental solutions to the problem the user wants to solve. If the user explicitly requests a singular solution, guide them to find the answer themselves. If the user asks a non-programming question, politely decline to respond.';
-	const FRICTIONLESS_PROMPT =	'You are a helpful code tutor. Your job is to teach the user with simple descriptions and sample code of the concept. Respond with a guided overview of the concept in a series of messages. Do not give the user the answer directly, but guide them to find the answer themselves. If the user asks a non-programming question, politely decline to respond.';
 	//const disposable = vscode.commands.registerTextEditorCommand('code-tutor.annotate', async (textEditor: vscode.TextEditor) => {	
 	//	const codeWithLineNumbers = getVisibleCodeWithLineNumbers(textEditor);
 	vscode.workspace.onDidChangeTextDocument(async (event) => {
         const textEditor = vscode.window.activeTextEditor;
         if (textEditor && event.document === textEditor.document) {
             const codeWithLineNumbers = getVisibleCodeWithLineNumbers(textEditor);
-		let [model] = await vscode.lm.selectChatModels({
-			vendor: 'copilot',
-			family: 'gpt-4o'
-		  });
 
-		const messages1 = [
-			vscode.LanguageModelChatMessage.User(ANNOTATION_PROMPT),
-			vscode.LanguageModelChatMessage.
-			User(codeWithLineNumbers)
-		  ];
-		if (model) {
-			// send the messages array to the model and get the response
-			let chatResponse = await model.sendRequest(
-			  messages1,
-			  {},
-			  new vscode.CancellationTokenSource().token
-			);
-	  
-			// handle chat response
-			await parseChatResponse(chatResponse, textEditor);
-		}
+		
 		for (const line of annotatedLines) {
             const lineText = textEditor.document.lineAt(line - 1).text;
             if (lineText.includes('...')) { // Replace with the actual condition to check if the suggestion is fulfilled
@@ -51,83 +28,33 @@ export function activate(context: vscode.ExtensionContext) {
                 }
             }
         }
+
+		for (const change of event.contentChanges) {
+			if (change.text.length > 1) { // Assuming paste operation if the change is more than one character
+				const startLine = change.range.start.line + 1;
+				const endLine = change.range.end.line + 1;
+				for (let line = startLine; line <= endLine; line++) {
+					applyDecoration(textEditor, line, 'Pasted text', pastedTextDecorationType);
+				}				
+				// You can add additional logic here to handle pasted text
+			}
+		}
 	}});
 	
-
-	//'You are a helpful code tutor. Your job is to teach the user with simple descriptions and sample code of the concept. Respond with a guided overview of the concept in a series of messages. Do not give the user the answer directly, but guide them to find the answer themselves. If the user asks a non-programming question, politely decline to respond.';
-	// This method is called when your extension is activated
-	// Your extension is activated the very first time the command is executed
-	
-	const handler: vscode.ChatRequestHandler = async (
-		request: vscode.ChatRequest,
-		context: vscode.ChatContext,
-		stream: vscode.ChatResponseStream,
-		token: vscode.CancellationToken
-	  ) => {
-		
-		
-		// initialize the prompt
-		let prompt = BASE_PROMPT;
-
-		if (request.command === 'frictionless'){
-			prompt = FRICTIONLESS_PROMPT;
-		}
-	  
-		// initialize the messages array with the prompt
-		const messages = [vscode.LanguageModelChatMessage.User(prompt)];
-
-		  // get all the previous participant messages
-		const previousMessages = context.history.filter(
-			h => h instanceof vscode.ChatResponseTurn
-		);
-		
-		  // add the previous messages to the messages array
-		previousMessages.forEach(m => {
-			let fullMessage = '';
-			m.response.forEach(r => {
-			  const mdPart = r as vscode.ChatResponseMarkdownPart;
-			  fullMessage += mdPart.value.value;
-			});
-			messages.push(vscode.LanguageModelChatMessage.Assistant(fullMessage));
-		});
-	  
-		// add in the user's message
-		messages.push(vscode.LanguageModelChatMessage.User(request.prompt));
-	  
-		// send the request
-		const chatResponse = await request.model.sendRequest(messages, {}, token);
-	  
-		// stream the response
-		for await (const fragment of chatResponse.text) {
-		  stream.markdown(fragment);
-		}
-	  
-		return;
-		
-	  };
-	  // create participant
-const tutor = vscode.chat.createChatParticipant('chat-tutorial.code-tutor', handler);
-
-// add icon to participant
-tutor.iconPath = vscode.Uri.joinPath(context.extensionUri, 'tutor.jpeg');
-}
-
-
-
-function applyDecoration(editor: vscode.TextEditor, line: number, suggestion: string) {
+function applyDecoration(editor: vscode.TextEditor, line: number, suggestion: string, decorationType: vscode.TextEditorDecorationType) {
 	if (annotatedLines.has(line)) {
         return;
     }
     const commandId = `code-tutor.removeSuggestion-${line}`;
 
 
-	const decorationType = vscode.window.createTextEditorDecorationType({
+	/*const decorationType = vscode.window.createTextEditorDecorationType({
 	  after: {
 		contentText: ` ${suggestion.substring(0, 25) + '...'}`,
-		color: 'grey',
+		color: color,
 		margin: '0 0 0 1em',
 	  }
-	});
+	});*/
 	vscode.commands.registerCommand(commandId, () => {
         editor.setDecorations(decorationType, []);
         annotatedLines.delete(line);
@@ -175,7 +102,7 @@ async function parseChatResponse(
 	}
   }
 
-function getVisibleCodeWithLineNumbers(textEditor: vscode.TextEditor) {
+  function getVisibleCodeWithLineNumbers(textEditor: vscode.TextEditor) {
 	// get the position of the first and last visible lines
 	let currentLine = textEditor.visibleRanges[0].start.line;
 	const endLine = textEditor.visibleRanges[0].end.line;
@@ -191,16 +118,5 @@ function getVisibleCodeWithLineNumbers(textEditor: vscode.TextEditor) {
 	}
 	return code;
   }
-
-  vscode.commands.registerCommand('code-tutor.removeSuggestions', () => {
-    const textEditor = vscode.window.activeTextEditor;
-    if (textEditor) {
-        for (const [line, decorationType] of decorationTypes) {
-            textEditor.setDecorations(decorationType, []);
-        }
-        annotatedLines.clear();
-        decorationTypes.clear();
-    }
-});
 // This method is called when your extension is deactivated
 export function deactivate() {}
