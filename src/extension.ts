@@ -140,7 +140,7 @@ function applyDecoration(editor: vscode.TextEditor, line: number, suggestion: st
 	  new vscode.Position(line - 1, lineLength)
 	);
   
-    const decoration = { range: range, hoverMessage: new vscode.MarkdownString(`Click [Remove](command:${commandId}) to remove this suggestion.`) };
+    const decoration = { range: range, hoverMessage: new vscode.MarkdownString(`${suggestion} Click [Remove](command:${commandId}) to remove this suggestion.`) };
 	decoration.hoverMessage.isTrusted = true; // Allow the command link to be trusted
 
   
