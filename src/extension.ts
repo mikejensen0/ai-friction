@@ -1,5 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
+import { DiffieHellman } from 'crypto';
+import { getActiveResourcesInfo, hrtime } from 'process';
 import * as vscode from 'vscode';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -23,19 +25,17 @@ If the user asks a non-programming question, politely decline to respond.`;
 	  ) => {
 		// initialize the prompt
 		let prompt = BASE_PROMPT;
-	    
+		// check if the command is coolcommand
 		if (request.command === 'coolcommand') {
 			prompt = COMMAND_PROMPT;
 		  }
 		// initialize the messages array with the prompt
 		const messages = [vscode.LanguageModelChatMessage.User(prompt)];
-	  
-
+		
 		  // get all the previous participant messages
 		const previousMessages = context.history.filter(
 			h => h instanceof vscode.ChatResponseTurn
 		);
-		
 		 // add the previous messages to the messages array
 		previousMessages.forEach(m => {
 			let fullMessage = '';
@@ -50,7 +50,7 @@ If the user asks a non-programming question, politely decline to respond.`;
 	  
 		// send the request
 		const chatResponse = await request.model.sendRequest(messages, {}, token);
-	  
+		//  const chatResponse = "hello i am cool an ebic" 
 		// stream the response
 		for await (const fragment of chatResponse.text) {
 		  stream.markdown(fragment);
@@ -69,3 +69,4 @@ If the user asks a non-programming question, politely decline to respond.`;
 
 // This method is called when your extension is deactivated
 export function deactivate() {}
+
