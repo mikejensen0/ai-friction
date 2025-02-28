@@ -7,35 +7,60 @@ const ANNOTATION_PROMPT = `You are a code tutor who helps students learn how to 
 { "line": 1, "suggestion": "I think you should use a for loop instead of a while loop. A for loop is more concise and easier to read." }{ "line": 12, "suggestion": "I think you should use a for loop instead of a while loop. A for loop is more concise and easier to read." }{ "line": 23, "suggestion": ""}
 `;
 
+const decorationTypes: Map<number, vscode.TextEditorDecorationType> = new Map();
+
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
-export const disposable = vscode.commands.registerTextEditorCommand('code-tutor.annotate', async (textEditor: vscode.TextEditor) => {
+export function activate(context: vscode.ExtensionContext) {
+    const timer = setInterval(async () => {
+        await annotateVisibleEditor();
+    }, 10 * 1000); // 60 seconds
 
-	// Get the code with line numbers from the current editor
-	const codeWithLineNumbers = getVisibleCodeWithLineNumbers(textEditor);
+    context.subscriptions.push(new vscode.Disposable(() => clearInterval(timer)));
+    vscode.workspace.onDidChangeTextDocument((e) => {
+        if (vscode.window.activeTextEditor?.document !== e.document) return;
 
-	// select the 4o chat model
-	const [model] = await vscode.lm.selectChatModels({
-		vendor: 'copilot',
-		family: 'gpt-4o',
-	});
+        e.contentChanges.forEach(change => {
+            const startLine = change.range.start.line + 1;
+            const endLine = change.range.end.line + 1;
 
-	// init the chat message
-	const messages = [
-		vscode.LanguageModelChatMessage.User(ANNOTATION_PROMPT),
-		vscode.LanguageModelChatMessage.User(codeWithLineNumbers),
-	];
+            for (let line = startLine; line <= endLine; line++) {
+                if (decorationTypes.has(line)) {
+                    decorationTypes.get(line)?.dispose();
+                    decorationTypes.delete(line);
+                }
+            }
+        });
+    });
+    // Optional: run immediately at startup if you want
+    annotateVisibleEditor().catch(console.error);
+}
 
-	// make sure the model is available
-	if (model) {
+async function annotateVisibleEditor() {
+    const activeEditor = vscode.window.activeTextEditor;
+    if (!activeEditor) {
+        console.log("No active editor");
+        return;
+    }
 
-		// send the messages array to the model and get the response
-		const chatResponse = await model.sendRequest(messages, {}, new vscode.CancellationTokenSource().token);
+    // The logic from your command, directly placed into this function
+    const codeWithLineNumbers = getVisibleCodeWithLineNumbers(activeEditor);
 
-		// handle chat response
-		await parseChatResponse(chatResponse, textEditor);
-	}
-});
+    const [model] = await vscode.lm.selectChatModels({
+        vendor: 'copilot',
+        family: 'gpt-4o',
+    });
+
+    const messages = [
+        vscode.LanguageModelChatMessage.User(ANNOTATION_PROMPT),
+        vscode.LanguageModelChatMessage.User(codeWithLineNumbers),
+    ];
+
+    if (model) {
+        const chatResponse = await model.sendRequest(messages, {}, new vscode.CancellationTokenSource().token);
+        await parseChatResponse(chatResponse, activeEditor);
+    }
+}
 
 async function parseChatResponse(chatResponse: vscode.LanguageModelChatResponse, textEditor: vscode.TextEditor) {
 	let accumulatedResponse = "";
@@ -74,8 +99,6 @@ function getVisibleCodeWithLineNumbers(textEditor: vscode.TextEditor) {
 	}
 	return code;
 }
-
-const decorationTypes: Map<number, vscode.TextEditorDecorationType> = new Map();
 
 
 function applyDecoration(editor: vscode.TextEditor, line: number, suggestion: string) {
