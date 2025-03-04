@@ -28,11 +28,11 @@ let endPositions: number[] = [];
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-	bisgardsshit();
+	bisgardsshit(context);
 	sebastianshit();
 }
 
-function bisgardsshit(){
+function bisgardsshit(context: vscode.ExtensionContext){
 	const BASE_PROMPT = `You are a helpful code tutor.`;
     const COMMAND_PROMPT = `You are a helpful tutor. 
     Your job is to teach the user with fun, simple exercises that they can complete in the editor.
