@@ -2,21 +2,29 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 
-const ANNOTATION_PROMPT = `You are a code tutor who helps students learn how to write better code. Your job is to evaluate a block of code that the user gives you. The user is writing You will then annotate any lines that could be improved with a brief suggestion and the reason why you are making that suggestion. Only make suggestions when you feel the severity is enough that it will impact the readibility and maintainability of the code. Be friendly with your suggestions and remember that these are students so they need gentle guidance. Format each suggestion as a single JSON object. It is not necessary to wrap your response in triple backticks. If you do not have a suggestion for a line leave the suggestion empty. Here is an example of what your response should look like:
+const ANNOTATION_PROMPT = `You are a code tutor who helps students learn how to write better code. 
+Your job is to evaluate a block of code that the user gives you. 
+The user is writing You will then annotate any lines that could be improved with a brief suggestion and the reason why you are making that suggestion.
+Only make suggestions when you feel the severity is enough that it will impact the readibility and maintainability of the code. 
+Be friendly with your suggestions and remember that these are students so they need gentle guidance.
+Do not not make suggestions to empty lines. 
+Format each suggestion as a single JSON object. 
+It is not necessary to wrap your response in triple backticks.
+If you do not have a suggestion for a line leave the suggestion empty.
+Here is an example of what your response should look like:
 
-{ "line": 1, "suggestion": "I think you should use a for loop instead of a while loop. A for loop is more concise and easier to read." }{ "line": 12, "suggestion": "I think you should use a for loop instead of a while loop. A for loop is more concise and easier to read." }{ "line": 23, "suggestion": ""}
+{ "line": 1, "suggestion": "I think you should use a for loop instead of a while loop. A for loop is more concise and easier to read." }
+{ "line": 12, "suggestion": "I think you should use a for loop instead of a while loop. A for loop is more concise and easier to read." }
+{ "line": 23, "suggestion": ""}
 `;
 
 const decorationTypes: Map<number, vscode.TextEditorDecorationType> = new Map();
 
+let debounceTimer: NodeJS.Timeout | undefined;
+
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-    const timer = setInterval(async () => {
-        await annotateVisibleEditor();
-    }, 10 * 1000); // 60 seconds
-
-    context.subscriptions.push(new vscode.Disposable(() => clearInterval(timer)));
     vscode.workspace.onDidChangeTextDocument((e) => {
         if (vscode.window.activeTextEditor?.document !== e.document) return;
 
@@ -31,6 +39,12 @@ export function activate(context: vscode.ExtensionContext) {
                 }
             }
         });
+		if (debounceTimer) {
+            clearTimeout(debounceTimer);
+        }
+        debounceTimer = setTimeout(async () => {
+            await annotateVisibleEditor();
+        }, 3000); 
     });
     // Optional: run immediately at startup if you want
     annotateVisibleEditor().catch(console.error);
@@ -130,4 +144,4 @@ function applyDecoration(editor: vscode.TextEditor, line: number, suggestion: st
 }
 
 // This method is called when your extension is deactivated
-export function deactivate() { }
+export function deactivate() {}
