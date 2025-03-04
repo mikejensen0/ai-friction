@@ -28,11 +28,11 @@ let endPositions: number[] = [];
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-	bisgardsshit(context);
-	sebastianshit();
+	highlightAiCopiedCode(context);
+	aiCodeSuggestions();
 }
 
-function bisgardsshit(context: vscode.ExtensionContext){
+function highlightAiCopiedCode(context: vscode.ExtensionContext){
 	const BASE_PROMPT = `You are a helpful code tutor.`;
     const COMMAND_PROMPT = `You are a helpful tutor. 
     Your job is to teach the user with fun, simple exercises that they can complete in the editor.
@@ -116,8 +116,72 @@ function bisgardsshit(context: vscode.ExtensionContext){
     
     CopyPasteColouring();
 }
+function CopyPasteColouring()  {
+    const decorationType = vscode.window.createTextEditorDecorationType({
+        backgroundColor: 'rgba(255, 255, 0, 0.3)', // Light yellow highlight
+        rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
+    });
 
-function sebastianshit(){
+    vscode.workspace.onDidChangeTextDocument(event => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) return;
+        if (event.contentChanges[0].text.length > 10 && chatHistory.includes(event.contentChanges[0].text)) {
+            const pastedContent = event.contentChanges[0].text;
+            pastedCode.push(pastedContent);
+
+            const decorations: vscode.DecorationOptions[] = [];
+            startPositions.push(event.contentChanges[0].rangeOffset);
+            endPositions.push(event.contentChanges[0].rangeOffset + pastedContent.length);
+            for (let i = 0; i < startPositions.length; i++) {
+                const startPos = editor.document.positionAt(startPositions[i]);
+                const endPos = editor.document.positionAt(endPositions[i]);
+                decorations.push({ range: new vscode.Range(startPos, endPos) });
+                console.log(startPos, endPos);
+            }
+    
+            editor.setDecorations(decorationType, decorations);
+        }
+        
+        const text = editor.document.getText();
+        const decorations: vscode.DecorationOptions[] = [];
+
+        pastedCode.forEach(searchString => {
+            // Use a loop to find all instances of the search string
+            let startIndex = 0;
+            while (startIndex < text.length) {
+            const index = text.indexOf(searchString, startIndex);
+            if (index === -1) {
+                break;
+            }
+            const startPos = editor.document.positionAt(index);
+            const endPos = editor.document.positionAt(index + searchString.length);
+            decorations.push({ range: new vscode.Range(startPos, endPos) });
+            startIndex = index + searchString.length;
+            }
+        });
+    
+
+        editor.setDecorations(decorationType, decorations);
+        
+
+    });
+}
+
+function extractCodeBlocks(text: string): string[] {
+    const parts = text.split("```"); 
+    const code: string[] = [];
+
+    for (let i = 1; i < parts.length; i += 2) {
+        let codeFix = parts[i].trim();
+
+        codeFix = codeFix.replace(/\n/g, "\r\n");
+        code.push(codeFix);
+    }
+
+    return code;
+}
+
+function aiCodeSuggestions(){
     vscode.workspace.onDidChangeTextDocument((e) => {
         if (vscode.window.activeTextEditor?.document !== e.document) return;
 
@@ -233,71 +297,6 @@ function applyDecoration(editor: vscode.TextEditor, line: number, suggestion: st
 	const decoration = { range: range, hoverMessage: suggestion };
 	vscode.window.activeTextEditor?.setDecorations(decorationType, [decoration]);
 
-}
-
-function CopyPasteColouring()  {
-    const decorationType = vscode.window.createTextEditorDecorationType({
-        backgroundColor: 'rgba(255, 255, 0, 0.3)', // Light yellow highlight
-        rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-    });
-
-    vscode.workspace.onDidChangeTextDocument(event => {
-        const editor = vscode.window.activeTextEditor;
-        if (!editor) return;
-        if (event.contentChanges[0].text.length > 10 && chatHistory.includes(event.contentChanges[0].text)) {
-            const pastedContent = event.contentChanges[0].text;
-            pastedCode.push(pastedContent);
-
-            const decorations: vscode.DecorationOptions[] = [];
-            startPositions.push(event.contentChanges[0].rangeOffset);
-            endPositions.push(event.contentChanges[0].rangeOffset + pastedContent.length);
-            for (let i = 0; i < startPositions.length; i++) {
-                const startPos = editor.document.positionAt(startPositions[i]);
-                const endPos = editor.document.positionAt(endPositions[i]);
-                decorations.push({ range: new vscode.Range(startPos, endPos) });
-                console.log(startPos, endPos);
-            }
-    
-            editor.setDecorations(decorationType, decorations);
-        }
-        
-        const text = editor.document.getText();
-        const decorations: vscode.DecorationOptions[] = [];
-
-        pastedCode.forEach(searchString => {
-            // Use a loop to find all instances of the search string
-            let startIndex = 0;
-            while (startIndex < text.length) {
-            const index = text.indexOf(searchString, startIndex);
-            if (index === -1) {
-                break;
-            }
-            const startPos = editor.document.positionAt(index);
-            const endPos = editor.document.positionAt(index + searchString.length);
-            decorations.push({ range: new vscode.Range(startPos, endPos) });
-            startIndex = index + searchString.length;
-            }
-        });
-    
-
-        editor.setDecorations(decorationType, decorations);
-        
-
-    });
-}
-
-function extractCodeBlocks(text: string): string[] {
-    const parts = text.split("```"); 
-    const code: string[] = [];
-
-    for (let i = 1; i < parts.length; i += 2) {
-        let codeFix = parts[i].trim();
-
-        codeFix = codeFix.replace(/\n/g, "\r\n");
-        code.push(codeFix);
-    }
-
-    return code;
 }
 
 export function deactivate() {}
