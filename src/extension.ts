@@ -16,10 +16,6 @@ Here is an example of what your response should look like:
 { "line": 23, "suggestion": ""}
 `;
 
-const decorationTypes: Map<number, vscode.TextEditorDecorationType> = new Map();
-
-let debounceTimer: NodeJS.Timeout | undefined;
-
 let chatHistory: string[] = [];
 let pastedCode: string[] = [];
 let startPositions: number[] = [];
@@ -116,6 +112,7 @@ function highlightAiCopiedCode(context: vscode.ExtensionContext){
     
     CopyPasteColouring();
 }
+
 function CopyPasteColouring()  {
     const decorationType = vscode.window.createTextEditorDecorationType({
         backgroundColor: 'rgba(255, 255, 0, 0.3)', // Light yellow highlight
@@ -160,10 +157,7 @@ function CopyPasteColouring()  {
             }
         });
     
-
         editor.setDecorations(decorationType, decorations);
-        
-
     });
 }
 
@@ -180,6 +174,9 @@ function extractCodeBlocks(text: string): string[] {
 
     return code;
 }
+
+const decorationTypes: Map<number, vscode.TextEditorDecorationType> = new Map();
+let debounceTimer: NodeJS.Timeout | undefined;
 
 function aiCodeSuggestions(){
     vscode.workspace.onDidChangeTextDocument((e) => {
@@ -203,7 +200,7 @@ function aiCodeSuggestions(){
             await annotateVisibleEditor();
         }, 3000); 
     });
-    // Optional: run immediately at startup if you want
+    
     annotateVisibleEditor().catch(console.error);
 }
 
