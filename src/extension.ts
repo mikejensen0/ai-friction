@@ -255,34 +255,32 @@ function CopyPasteColouring()  {
                 const startPos = editor.document.positionAt(startPositions[i]);
                 const endPos = editor.document.positionAt(endPositions[i]);
                 decorations.push({ range: new vscode.Range(startPos, endPos) });
+                console.log(startPos, endPos);
             }
-
     
             editor.setDecorations(decorationType, decorations);
         }
-        else {
         
-            const text = editor.document.getText();
-            const decorations: vscode.DecorationOptions[] = [];
+        const text = editor.document.getText();
+        const decorations: vscode.DecorationOptions[] = [];
 
-            pastedCode.forEach(searchString => {
-                // Use a loop to find all instances of the search string
-                let startIndex = 0;
-                while (startIndex < text.length) {
-                const index = text.indexOf(searchString, startIndex);
-                if (index === -1) {
-                    break;
-                }
-                const startPos = editor.document.positionAt(index);
-                const endPos = editor.document.positionAt(index + searchString.length);
-                decorations.push({ range: new vscode.Range(startPos, endPos) });
-                startIndex = index + searchString.length;
-                }
-            });
-        
+        pastedCode.forEach(searchString => {
+            // Use a loop to find all instances of the search string
+            let startIndex = 0;
+            while (startIndex < text.length) {
+            const index = text.indexOf(searchString, startIndex);
+            if (index === -1) {
+                break;
+            }
+            const startPos = editor.document.positionAt(index);
+            const endPos = editor.document.positionAt(index + searchString.length);
+            decorations.push({ range: new vscode.Range(startPos, endPos) });
+            startIndex = index + searchString.length;
+            }
+        });
+    
 
-            editor.setDecorations(decorationType, decorations);
-        }
+        editor.setDecorations(decorationType, decorations);
         
 
     });
