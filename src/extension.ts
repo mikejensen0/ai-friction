@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-let chatHistory: string[] = ["console.log('Hello World');\r\nlet b = 10;\r\nlet a = b + b\r\nconsole.log(a)", "Sample Text", "AI Response"];
+let chatHistory: string[] = [];
 let pastedCode: string[] = [];
 let array1: number[] = [];
 let array2: number[] = [];
@@ -50,30 +50,31 @@ export function activate(context: vscode.ExtensionContext) {
         // send the request
         const chatResponse = await request.model.sendRequest(messages, {}, token);
         
-        let isCode = false;
-        let isFirst = true;
-        let code = '';
+        let isFirst = false;
+        let response = '';
+        let code = [];
 
         // stream the response
         for await (const fragment of chatResponse.text) {
             stream.markdown(fragment);
-            console.log(fragment);
-            if (fragment.includes('```')) {
-                isCode = !isCode;
-            } 
-            else if(isCode) {
-                if(isFirst) {
+            if (isFirst) {
+                if(!fragment.includes("`")) {
                     isFirst = false;
                 }
-                else {
-                    code += fragment;
-                }
+            }
+            else {
+                response += fragment;
+            }
+            if (fragment.includes("```")) {
+                isFirst = true;
             }
         }
 
-        if (code !== '') {
-            code = code.trim();
-            chatHistory.push(code);
+        if (response !== '') {
+            code = extractCodeBlocks(response);
+            code.forEach((block) => {
+                chatHistory.push(block);
+            });
             console.log(chatHistory);
         }
         
@@ -146,4 +147,18 @@ function stuff()  {
         
 
     });
+}
+
+function extractCodeBlocks(text: string): string[] {
+    const parts = text.split("```"); 
+    const code: string[] = [];
+
+    for (let i = 1; i < parts.length; i += 2) {
+        let codeFix = parts[i].trim();
+
+        codeFix = codeFix.replace(/\n/g, "\r\n");
+        code.push(codeFix);
+    }
+
+    return code;
 }
