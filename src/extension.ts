@@ -2,11 +2,10 @@ import * as vscode from 'vscode';
 
 let chatHistory: string[] = [];
 let pastedCode: string[] = [];
-let array1: number[] = [];
-let array2: number[] = [];
+let startPositions: number[] = [];
+let endPositions: number[] = [];
 export function activate(context: vscode.ExtensionContext) {
-    const BASE_PROMPT = `You are a helpful code tutor. 
-    Your job is to be cool`;
+    const BASE_PROMPT = `You are a helpful code tutor.`;
     const COMMAND_PROMPT = `You are a helpful tutor. 
     Your job is to teach the user with fun, simple exercises that they can complete in the editor.
     Your exercises should start simple and get more complex as the user progresses.
@@ -87,12 +86,12 @@ export function activate(context: vscode.ExtensionContext) {
     // add icon to participant
     tutor.iconPath = vscode.Uri.joinPath(context.extensionUri, 'tutor.jpeg');
     
-    stuff();
+    CopyPasteColouring();
 }
 
 export function deactivate() {}
 
-function stuff()  {
+function CopyPasteColouring()  {
     const decorationType = vscode.window.createTextEditorDecorationType({
         backgroundColor: 'rgba(255, 255, 0, 0.3)', // Light yellow highlight
         rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
@@ -104,17 +103,13 @@ function stuff()  {
         if (event.contentChanges[0].text.length > 10 && chatHistory.includes(event.contentChanges[0].text)) {
             const pastedContent = event.contentChanges[0].text;
             pastedCode.push(pastedContent);
-            vscode.window.showInformationMessage(`Pasted content: ${pastedContent}`);
-            // Store the pasted content in a variable
-            let capturedContent = pastedContent;
-            console.log(`Captured content: ${capturedContent}`);
-            const text = editor.document.getText();
+
             const decorations: vscode.DecorationOptions[] = [];
-            array1.push(event.contentChanges[0].rangeOffset);
-            array2.push(event.contentChanges[0].rangeOffset + pastedContent.length);
-            for (let i = 0; i < array1.length; i++) {
-                const startPos = editor.document.positionAt(array1[i]);
-                const endPos = editor.document.positionAt(array2[i]);
+            startPositions.push(event.contentChanges[0].rangeOffset);
+            endPositions.push(event.contentChanges[0].rangeOffset + pastedContent.length);
+            for (let i = 0; i < startPositions.length; i++) {
+                const startPos = editor.document.positionAt(startPositions[i]);
+                const endPos = editor.document.positionAt(endPositions[i]);
                 decorations.push({ range: new vscode.Range(startPos, endPos) });
             }
 
