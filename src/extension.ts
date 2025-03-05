@@ -122,21 +122,51 @@ function CopyPasteColouring()  {
     vscode.workspace.onDidChangeTextDocument(event => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) return;
-        if (event.contentChanges[0].text.length > 10 && chatHistory.includes(event.contentChanges[0].text)) {
-            const pastedContent = event.contentChanges[0].text;
-            pastedCode.push(pastedContent);
+        console.log(event.document.fileName);
+        if(event.document.fileName.includes("\\response_")) return;
+        const pastedContent = event.contentChanges[0].text;
 
-            const decorations: vscode.DecorationOptions[] = [];
-            startPositions.push(event.contentChanges[0].rangeOffset);
-            endPositions.push(event.contentChanges[0].rangeOffset + pastedContent.length);
-            for (let i = 0; i < startPositions.length; i++) {
-                const startPos = editor.document.positionAt(startPositions[i]);
-                const endPos = editor.document.positionAt(endPositions[i]);
-                decorations.push({ range: new vscode.Range(startPos, endPos) });
-                console.log(startPos, endPos);
+        if (pastedContent.length > 3) {
+            const pastedLines = pastedContent.split("\r\n");
+            console.log("Pasted lines: " + pastedLines);
+            let match = false;
+
+            for (const chatEntry of chatHistory) {
+                const chatLines = chatEntry.split("\r\n");
+                console.log("Chat lines: " + chatLines);
+                // Iterate through each possible starting index in chatLines
+                for (let i = 0; i < chatLines.length; i++) {
+                    console.log("Chat line " + i + ": " + chatLines[i]);
+                    if(chatLines[i] === pastedLines[0]){
+                        match = true;
+
+                        for (let j = 0; j < pastedLines.length; j++) {
+                            if (chatLines[i + j] !== pastedLines[j]) {
+                                match = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (match) {
+                    pastedCode.push(pastedContent);
+
+                    const decorations: vscode.DecorationOptions[] = [];
+                    startPositions.push(event.contentChanges[0].rangeOffset);
+                    endPositions.push(event.contentChanges[0].rangeOffset + pastedContent.length);
+
+                    for (let k = 0; k < startPositions.length; k++) {
+                        const startPos = editor.document.positionAt(startPositions[k]);
+                        const endPos = editor.document.positionAt(endPositions[k]);
+                        decorations.push({ range: new vscode.Range(startPos, endPos) });
+                        console.log("highlight");
+                    }
+
+                    editor.setDecorations(decorationType, decorations);
+                    break;
+                }
             }
-    
-            editor.setDecorations(decorationType, decorations);
         }
         
         const text = editor.document.getText();
