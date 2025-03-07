@@ -94,7 +94,7 @@ function highlightAiCopiedCode(context: vscode.ExtensionContext){
         }
 
         if (response !== '') {
-            code = extractCodeBlocks(response);
+            code = ExtractCodeBlocks(response);
             code.forEach((block) => {
                 chatHistory.push(block);
             });
@@ -122,21 +122,18 @@ function CopyPasteColouring()  {
     vscode.workspace.onDidChangeTextDocument(event => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) return;
-        console.log(event.document.fileName);
         if(event.document.fileName.includes("\\response_")) return;
         const pastedContent = event.contentChanges[0].text;
 
         if (pastedContent.length > 3) {
-            const pastedLines = pastedContent.split("\r\n");
-            console.log("Pasted lines: " + pastedLines);
+            const pastedLines = SplitCodeLines(pastedContent);
             let match = false;
 
             for (const chatEntry of chatHistory) {
-                const chatLines = chatEntry.split("\r\n");
-                console.log("Chat lines: " + chatLines);
+                const chatLines = SplitCodeLines(chatEntry);
                 // Iterate through each possible starting index in chatLines
                 for (let i = 0; i < chatLines.length; i++) {
-                    console.log("Chat line " + i + ": " + chatLines[i]);
+                    console.log("Line " + i + ": " + chatLines[i]);
                     if(chatLines[i] === pastedLines[0]){
                         match = true;
 
@@ -191,18 +188,26 @@ function CopyPasteColouring()  {
     });
 }
 
-function extractCodeBlocks(text: string): string[] {
+function ExtractCodeBlocks(text: string): string[] {
     const parts = text.split("```"); 
     const code: string[] = [];
 
     for (let i = 1; i < parts.length; i += 2) {
         let codeFix = parts[i].trim();
 
-        codeFix = codeFix.replace(/\n/g, "\r\n");
+        codeFix = codeFix
+            .split("\n")
+            .join("\r\n");
+        
         code.push(codeFix);
     }
 
     return code;
+}
+
+function SplitCodeLines(code: string): string[] {
+    return code.split("\r\n")
+        .map(line => line.replace(/^\s+/, ""));
 }
 
 const decorationTypes: Map<number, vscode.TextEditorDecorationType> = new Map();
@@ -210,7 +215,8 @@ let debounceTimer: NodeJS.Timeout | undefined;
 
 function aiCodeSuggestions(){
     vscode.workspace.onDidChangeTextDocument((e) => {
-        if (vscode.window.activeTextEditor?.document !== e.document) return;
+        const editor = vscode.window.activeTextEditor;
+        if (!editor || editor.document !== e.document || e.document.fileName.includes("\\response_")) return;
 
         e.contentChanges.forEach(change => {
             const startLine = change.range.start.line + 1;
@@ -227,22 +233,14 @@ function aiCodeSuggestions(){
             clearTimeout(debounceTimer);
         }
         debounceTimer = setTimeout(async () => {
-            await annotateVisibleEditor();
+            await annotateVisibleEditor(editor);
         }, 3000); 
     });
-    
-    annotateVisibleEditor().catch(console.error);
 }
 
-async function annotateVisibleEditor() {
-    const activeEditor = vscode.window.activeTextEditor;
-    if (!activeEditor) {
-        console.log("No active editor");
-        return;
-    }
-
+async function annotateVisibleEditor(editor: vscode.TextEditor) {
     // The logic from your command, directly placed into this function
-    const codeWithLineNumbers = getVisibleCodeWithLineNumbers(activeEditor);
+    const codeWithLineNumbers = getVisibleCodeWithLineNumbers(editor);
 
     const [model] = await vscode.lm.selectChatModels({
         vendor: 'copilot',
@@ -256,7 +254,10 @@ async function annotateVisibleEditor() {
 
     if (model) {
         const chatResponse = await model.sendRequest(messages, {}, new vscode.CancellationTokenSource().token);
-        await parseChatResponse(chatResponse, activeEditor);
+        await parseChatResponse(chatResponse, editor);
+    }
+    else {
+        return;
     }
 }
 async function parseChatResponse(chatResponse: vscode.LanguageModelChatResponse, textEditor: vscode.TextEditor) {
@@ -299,7 +300,6 @@ function getVisibleCodeWithLineNumbers(textEditor: vscode.TextEditor) {
 
 
 function applyDecoration(editor: vscode.TextEditor, line: number, suggestion: string) {
-
     if (decorationTypes.has(line) || suggestion === "") {
         decorationTypes.get(line)?.dispose();
     }
@@ -322,8 +322,7 @@ function applyDecoration(editor: vscode.TextEditor, line: number, suggestion: st
 	);
 
 	const decoration = { range: range, hoverMessage: suggestion };
-	vscode.window.activeTextEditor?.setDecorations(decorationType, [decoration]);
-
+	editor.setDecorations(decorationType, [decoration]);
 }
 
 export function deactivate() {}
