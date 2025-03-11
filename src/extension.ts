@@ -94,7 +94,7 @@ function highlightAiCopiedCode(context: vscode.ExtensionContext){
         }
 
         if (response !== '') {
-            code = extractCodeBlocks(response);
+            code = ExtractCodeBlocks(response);
             code.forEach((block) => {
                 chatHistory.push(block);
             });
@@ -122,21 +122,48 @@ function CopyPasteColouring()  {
     vscode.workspace.onDidChangeTextDocument(event => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) return;
-        if (event.contentChanges[0].text.length > 10 && chatHistory.includes(event.contentChanges[0].text)) {
-            const pastedContent = event.contentChanges[0].text;
-            pastedCode.push(pastedContent);
+        if(event.document.fileName.includes("\\response_")) return;
+        const pastedContent = event.contentChanges[0].text;
 
-            const decorations: vscode.DecorationOptions[] = [];
-            startPositions.push(event.contentChanges[0].rangeOffset);
-            endPositions.push(event.contentChanges[0].rangeOffset + pastedContent.length);
-            for (let i = 0; i < startPositions.length; i++) {
-                const startPos = editor.document.positionAt(startPositions[i]);
-                const endPos = editor.document.positionAt(endPositions[i]);
-                decorations.push({ range: new vscode.Range(startPos, endPos) });
-                console.log(startPos, endPos);
+        if (pastedContent.length > 3) {
+            const pastedLines = SplitCodeLines(pastedContent);
+            let match = false;
+
+            for (const chatEntry of chatHistory) {
+                const chatLines = SplitCodeLines(chatEntry);
+                // Iterate through each possible starting index in chatLines
+                for (let i = 0; i < chatLines.length; i++) {
+                    console.log("Line " + i + ": " + chatLines[i]);
+                    if(chatLines[i] === pastedLines[0]){
+                        match = true;
+
+                        for (let j = 0; j < pastedLines.length; j++) {
+                            if (chatLines[i + j] !== pastedLines[j]) {
+                                match = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (match) {
+                    pastedCode.push(pastedContent);
+
+                    const decorations: vscode.DecorationOptions[] = [];
+                    startPositions.push(event.contentChanges[0].rangeOffset);
+                    endPositions.push(event.contentChanges[0].rangeOffset + pastedContent.length);
+
+                    for (let k = 0; k < startPositions.length; k++) {
+                        const startPos = editor.document.positionAt(startPositions[k]);
+                        const endPos = editor.document.positionAt(endPositions[k]);
+                        decorations.push({ range: new vscode.Range(startPos, endPos) });
+                        console.log("highlight");
+                    }
+
+                    editor.setDecorations(decorationType, decorations);
+                    break;
+                }
             }
-    
-            editor.setDecorations(decorationType, decorations);
         }
         
         const text = editor.document.getText();
@@ -161,18 +188,26 @@ function CopyPasteColouring()  {
     });
 }
 
-function extractCodeBlocks(text: string): string[] {
+function ExtractCodeBlocks(text: string): string[] {
     const parts = text.split("```"); 
     const code: string[] = [];
 
     for (let i = 1; i < parts.length; i += 2) {
         let codeFix = parts[i].trim();
 
-        codeFix = codeFix.replace(/\n/g, "\r\n");
+        codeFix = codeFix
+            .split("\n")
+            .join("\r\n");
+        
         code.push(codeFix);
     }
 
     return code;
+}
+
+function SplitCodeLines(code: string): string[] {
+    return code.split("\r\n")
+        .map(line => line.replace(/^\s+/, ""));
 }
 
 const decorationTypes: Map<number, vscode.TextEditorDecorationType> = new Map();
@@ -180,7 +215,8 @@ let debounceTimer: NodeJS.Timeout | undefined;
 
 function aiCodeSuggestions(){
     vscode.workspace.onDidChangeTextDocument((e) => {
-        if (vscode.window.activeTextEditor?.document !== e.document) return;
+        const editor = vscode.window.activeTextEditor;
+        if (!editor || editor.document !== e.document || e.document.fileName.includes("\\response_")) return;
 
         e.contentChanges.forEach(change => {
             const startLine = change.range.start.line + 1;
@@ -197,22 +233,14 @@ function aiCodeSuggestions(){
             clearTimeout(debounceTimer);
         }
         debounceTimer = setTimeout(async () => {
-            await annotateVisibleEditor();
+            await annotateVisibleEditor(editor);
         }, 3000); 
     });
-    
-    annotateVisibleEditor().catch(console.error);
 }
 
-async function annotateVisibleEditor() {
-    const activeEditor = vscode.window.activeTextEditor;
-    if (!activeEditor) {
-        console.log("No active editor");
-        return;
-    }
-
+async function annotateVisibleEditor(editor: vscode.TextEditor) {
     // The logic from your command, directly placed into this function
-    const codeWithLineNumbers = getVisibleCodeWithLineNumbers(activeEditor);
+    const codeWithLineNumbers = getVisibleCodeWithLineNumbers(editor);
 
     const [model] = await vscode.lm.selectChatModels({
         vendor: 'copilot',
@@ -226,7 +254,10 @@ async function annotateVisibleEditor() {
 
     if (model) {
         const chatResponse = await model.sendRequest(messages, {}, new vscode.CancellationTokenSource().token);
-        await parseChatResponse(chatResponse, activeEditor);
+        await parseChatResponse(chatResponse, editor);
+    }
+    else {
+        return;
     }
 }
 async function parseChatResponse(chatResponse: vscode.LanguageModelChatResponse, textEditor: vscode.TextEditor) {
@@ -269,7 +300,6 @@ function getVisibleCodeWithLineNumbers(textEditor: vscode.TextEditor) {
 
 
 function applyDecoration(editor: vscode.TextEditor, line: number, suggestion: string) {
-
     if (decorationTypes.has(line) || suggestion === "") {
         decorationTypes.get(line)?.dispose();
     }
@@ -292,8 +322,7 @@ function applyDecoration(editor: vscode.TextEditor, line: number, suggestion: st
 	);
 
 	const decoration = { range: range, hoverMessage: suggestion };
-	vscode.window.activeTextEditor?.setDecorations(decorationType, [decoration]);
-
+	editor.setDecorations(decorationType, [decoration]);
 }
 
 export function deactivate() {}
