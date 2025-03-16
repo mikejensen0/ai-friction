@@ -115,7 +115,7 @@ function highlightAiCopiedCode(context: vscode.ExtensionContext){
 
 function CopyPasteColouring()  {
     const decorationType = vscode.window.createTextEditorDecorationType({
-        backgroundColor: 'rgba(255, 255, 0, 0.3)', // Light yellow highlight
+        backgroundColor: 'rgba(58,61,65,0.8)', // Grey highlight
         rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
     });
 
@@ -125,7 +125,7 @@ function CopyPasteColouring()  {
         if(event.document.fileName.includes("\\response_")) return;
         const pastedContent = event.contentChanges[0].text;
 
-        if (pastedContent.length > 3) {
+        if (pastedContent.length > 4) {
             const pastedLines = SplitCodeLines(pastedContent);
             let match = false;
 
